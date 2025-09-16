@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>简易聊天</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="chat-page">
+      <header class="chat-header">
+        <div class="title">AI聊天机器人</div>
+        <button id="clear-btn" class="clear-btn" type="button" title="清空本地对话">清空</button>
+      </header>
+      <main id="chat" class="chat-messages"></main>
+      <form id="chat-form" class="chat-input">
+        <input id="msg" type="text" placeholder="输入消息..." autocomplete="off" />
+        <button type="submit">发送</button>
+      </form>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
