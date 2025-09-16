@@ -7,6 +7,10 @@ let history = [];
 
 // 本地存储键
 const STORAGE_KEY = "AIChat_history_v1";
+////////////////////
+const DEEPTHINK_KEY = "AIChat_deepthink_v1";
+let deepThink = false;
+//////////////////
 
 // 将历史记录保存到本地存储
 function saveHistory() {
@@ -14,6 +18,22 @@ function saveHistory() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   } catch {}
 }
+
+/////////////////////
+function saveDeepThink() {
+  try {
+    localStorage.setItem(DEEPTHINK_KEY, deepThink ? "1" : "0");
+  } catch {}
+}
+
+function loadDeepThink() {
+  try {
+    return localStorage.getItem(DEEPTHINK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+///////////////////////
 
 // 从本地存储加载历史记录
 function loadHistory() {
@@ -63,10 +83,21 @@ function appendMessage(role, content) {
   chatEl.scrollTop = chatEl.scrollHeight;
 }
 
+// 切换深度思考按钮状态
+function updateDeepThinkButton() {
+  const btn = document.getElementById("deepthink-btn");
+  if (!btn) return;
+  btn.classList.toggle("active", deepThink);
+  btn.textContent = `深度思考：${deepThink ? "开" : "关"}`;
+}
+
 // 设置输入框和按钮的禁用状态 - 正在请求等待响应返回时禁用，防止重复提交
 function setPending(pending) {
   inputEl.disabled = pending;
-  formEl.querySelector("button").disabled = pending;
+  const submitBtn = formEl.querySelector("button");
+  if (submitBtn) submitBtn.disabled = pending;
+  // const dtBtn = document.getElementById("deepthink-btn");
+  // if (dtBtn) dtBtn.disabled = pending;
 }
 
 // 清空聊天记录
@@ -86,6 +117,22 @@ document.addEventListener("DOMContentLoaded", () => {
     renderFromHistory();
   } else {
     initializeChat();
+  }
+
+  // 初始化深度思考开关
+  deepThink = loadDeepThink();
+  updateDeepThinkButton();
+
+  const deepBtn = document.getElementById("deepthink-btn");
+  console.log("获取到的按钮元素：", deepBtn);
+  if (deepBtn) {
+    deepBtn.addEventListener("click", () => {
+      deepThink = !deepThink;
+      console.log("深度思考状态切换为：", deepThink);
+      saveDeepThink();
+      updateDeepThinkButton();
+      inputEl.focus();
+    });
   }
 
   // 绑定清空按钮
@@ -119,7 +166,8 @@ formEl.addEventListener("submit", async (e) => {
       body: JSON.stringify({
         message: text,
         // 如不需要上下文，可不传 history
-        history
+        history,
+        deep_think: deepThink
       }),
     });
 

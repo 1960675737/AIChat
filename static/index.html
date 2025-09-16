@@ -10,7 +10,10 @@
     <div class="chat-page">
       <header class="chat-header">
         <div class="title">AI聊天机器人</div>
-        <button id="clear-btn" class="clear-btn" type="button" title="清空本地对话">清空</button>
+        <div class="actions">
+          <button id="deepthink-btn" class="toggle-btn" type="button" title="切换到可推理模型">深度思考：关</button>
+          <button id="clear-btn" class="clear-btn" type="button" title="清空本地对话">清空</button>
+        </div>
       </header>
       <main id="chat" class="chat-messages"></main>
       <form id="chat-form" class="chat-input">

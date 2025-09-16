@@ -20,11 +20,12 @@ def index():
     # 提供静态首页
     return send_from_directory(app.static_folder, "index.html")
 
-def call_llm(message: str, history=None) -> str:
+def call_llm(message: str, history=None, deep_think: bool = False) -> str:
     """
     调用大模型并返回回复文本。
-    - 优先使用 OPENAI_API_KEY 调用 OpenAI。
-    - 如果没有配置 Key 或未安装 openai 库，则返回演示模式回复。
+    - 优先读取环境变量中的 Key（DEEPSEEK_API_KEY 或 OPENAI_API_KEY）
+    - deep_think=True 时切换到可推理模型
+    - 若无可用 Key 或未安装 openai 库，则返回演示模式回复。
     """
     history = history or []
     api_key = "sk-d9179d39f4eb465b93c2e2f0de50f947"
@@ -44,17 +45,19 @@ def call_llm(message: str, history=None) -> str:
         messages.append({"role": "user", "content": message})
         print("Messages for LLM:", messages)
 
-        # 调用 Chat Completions（你也可以选择其它模型）
+        # 根据 deep_think 切换模型：普通对话 deepseek-chat，深度思考 deepseek-reasoner
+        model = "deepseek-reasoner" if deep_think else "deepseek-chat"
+
         completion = client.chat.completions.create(
-            model="deepseek-chat",
+            model=model,
             messages=messages,
             temperature=0.7
         )
         reply = completion.choices[0].message.content.strip()
         return reply
 
-    # 演示模式：未配置 OpenAI 时的占位逻辑
-    return f"(演示模式) 你说：{message}"
+    # 演示模式：未配置 Key 或 openai 库不可用
+    return f"(演示模式{'-深度思考' if deep_think else ''}) 你说：{message}"
 
 
 # 前端通过/api/chat 发起post请求
@@ -64,13 +67,16 @@ def chat():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     history = data.get("history") or []
+    deep_think = bool(data.get("deep_think"))
 
     if not message:
         return jsonify({"error": "message 不能为空"}), 400
 
     try:
-        reply = call_llm(message, history=history)
-        return jsonify({"reply": reply})
+        reply = call_llm(message, history=history, deep_think=deep_think)
+        model = "deepseek-reasoner" if deep_think else "deepseek-chat"
+        print(f"是否使用深度思考模型：{deep_think}; 当前model为：{model}")
+        return jsonify({"reply": reply, "model": model})
     except Exception as e:
         # 生产中建议更细致的错误上报/监控
         return jsonify({"error": "LLM 调用失败", "detail": str(e)}), 500

@@ -127,6 +127,12 @@ body {
   font-weight: 600;
 }
 
+.chat-header .actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .clear-btn {
   background: transparent;
   color: var(--text);
@@ -143,4 +149,27 @@ body {
 
 .clear-btn:active {
   transform: translateY(1px);
+}
+
+/* 深度思考开关按钮 */
+.toggle-btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid #334155;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.toggle-btn:hover {
+  background: #0a0f1a;
+  border-color: #475569;
+}
+.toggle-btn.active {
+  background: #10b981; /* emerald */
+  color: #0b1220;
+  border-color: #10b981;
+}
+.toggle-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
