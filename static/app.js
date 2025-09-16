@@ -80,7 +80,10 @@ function appendMessage(role, content) {
 
   wrap.appendChild(bubble);
   chatEl.appendChild(wrap);
+  // 聊天窗口自动滚动到底部
   chatEl.scrollTop = chatEl.scrollHeight;
+  // 流式响应场景中，必须返回气泡元素以便后续更新内容
+  return bubble; // 返回以便流式更新
 }
 
 // 切换深度思考按钮状态
@@ -110,41 +113,52 @@ function clearConversation(){
 
 }
 
-// 页面加载时初始化 有历史记录则加载历史记录，否则显示欢迎语
-document.addEventListener("DOMContentLoaded", () => {
-  history = loadHistory();
-  if (history.length > 0) {
-    renderFromHistory();
-  } else {
-    initializeChat();
+// 初始化 UI（可重复调用但只绑定一次）
+function initUI() {
+  // 仅当还没有渲染过内容时才初始化/恢复历史
+  if (!chatEl.dataset.initialized) {
+    history = loadHistory();
+    if (history.length > 0) {
+      renderFromHistory();
+    } else {
+      initializeChat();
+    }
+    chatEl.dataset.initialized = "1";
   }
 
   // 初始化深度思考开关
   deepThink = loadDeepThink();
   updateDeepThinkButton();
 
+  // 绑定切换深度思考模式按钮
   const deepBtn = document.getElementById("deepthink-btn");
-  console.log("获取到的按钮元素：", deepBtn);
-  if (deepBtn) {
+  if (deepBtn && !deepBtn.dataset.bound) {
     deepBtn.addEventListener("click", () => {
       deepThink = !deepThink;
-      console.log("深度思考状态切换为：", deepThink);
       saveDeepThink();
       updateDeepThinkButton();
       inputEl.focus();
     });
+    deepBtn.dataset.bound = "1";
   }
 
   // 绑定清空按钮
   const clearBtn = document.getElementById("clear-btn");
-  if (clearBtn) {
+  if (clearBtn && !clearBtn.dataset.bound) {
     clearBtn.addEventListener("click", () => {
       const ok = confirm("确定要清空本地对话吗？此操作不可撤销。");
       if (!ok) return;
       clearConversation();
     });
+    clearBtn.dataset.bound = "1";
   }
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initUI);
+} else {
+  initUI();
+}
 
 formEl.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -160,7 +174,9 @@ formEl.addEventListener("submit", async (e) => {
   setPending(true);
 
   try {
-    const res = await fetch("/api/chat", {
+    const assistantBubble = appendMessage("assistant", "");
+
+    const res = await fetch("/api/chat_stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -171,14 +187,27 @@ formEl.addEventListener("submit", async (e) => {
       }),
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
+    if (!res.ok || !res.body) {
+      const errText = await (res.text ? res.text() : Promise.resolve(""));
+      throw new Error(errText || `HTTP ${res.status}`);
     }
 
-    const data = await res.json();
-    const reply = data.reply || "(无回复)";
-    appendMessage("assistant", reply);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let acc = "";  // 作用是获取完整的流式返回，用于存入历史
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      if (chunk) {
+        acc += chunk;
+        assistantBubble.textContent += chunk;
+        chatEl.scrollTop = chatEl.scrollHeight;
+      }
+    }
+
+    // 完成后入历史
+    const reply = acc || "(无回复)";
     history.push({ role: "assistant", content: reply });
     saveHistory();
   } catch (err) {
