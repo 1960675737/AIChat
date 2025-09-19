@@ -7,21 +7,37 @@
     <link rel="stylesheet" href="/static/style.css" />
   </head>
   <body>
-    <div class="chat-page">
-      <header class="chat-header">
-        <div class="title">AI聊天机器人</div>
-        <div class="actions">
-          <button id="deepthink-btn" class="toggle-btn" type="button" title="切换到可推理模型">深度思考：关</button>
-          <button id="clear-btn" class="clear-btn" type="button" title="清空本地对话">清空</button>
+    <div class="app-container">
+      <!-- 侧边栏 -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <button id="new-session-btn" class="new-session-btn" type="button">
+            <span class="icon">+</span>
+            新会话
+          </button>
         </div>
-      </header>
-      <main id="chat" class="chat-messages"></main>
-      <form id="chat-form" class="chat-input">
-        <input id="msg" type="text" placeholder="输入消息..." autocomplete="off" />
-        <button type="submit">发送</button>
-      </form>
+        <div id="session-list" class="session-list">
+          <!-- 会话列表将在这里动态生成 -->
+        </div>
+      </aside>
+      
+      <!-- 主聊天区 -->
+      <div class="chat-page">
+        <header class="chat-header">
+          <div id="session-title" class="title">AI聊天机器人</div>
+          <div class="actions">
+            <button id="deepthink-btn" class="toggle-btn" type="button" title="切换到可推理模型">深度思考：关</button>
+            <button id="delete-session-btn" class="delete-btn" type="button" title="删除当前会话">删除会话</button>
+          </div>
+        </header>
+        <main id="chat" class="chat-messages"></main>
+        <form id="chat-form" class="chat-input">
+          <input id="msg" type="text" placeholder="输入消息..." autocomplete="off" />
+          <button type="submit">发送</button>
+        </form>
+      </div>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app_session.js"></script>
   </body>
 </html>
