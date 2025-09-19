@@ -29,6 +29,7 @@ def get_db():
 @app.teardown_appcontext
 def close_connection(exception):
     """请求结束时关闭数据库连接"""
+    print("请求已结束，关闭数据库连接")
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
@@ -377,19 +378,42 @@ def chat_stream_v2():
     
     def generate():
         accumulated = ""
-        for chunk in call_llm_stream(message, history=history, deep_think=deep_think):
-            accumulated += chunk
-            yield chunk
-        
-        # 流结束后保存助手回复
-        if accumulated:
-            db = get_db()
-            db.execute(
-                "INSERT INTO messages (session_id, role, content, created_at) VALUES (?, ?, ?, ?)",
-                (session_id, "assistant", accumulated, datetime.now().isoformat())
-            )
-            db.commit()
-    
+        try:
+            for chunk in call_llm_stream(message, history=history, deep_think=deep_think):
+                accumulated += chunk
+                yield chunk
+        except GeneratorExit:
+            # 客户端断开连接，仍尝试保存已生成的内容
+            pass
+        except Exception as _stream_err:
+            # 流式调用异常时，仍保存已生成的部分
+            print("[warn] stream error:", _stream_err)
+        finally:
+            # 流结束后（或异常/断连）保存助手回复
+            if accumulated:
+                try:
+                    # 为避免请求上下文结束导致的已关闭连接，这里使用一次性新连接
+                    conn = sqlite3.connect(DATABASE)
+                    now2 = datetime.now().isoformat()
+                    conn.execute(
+                        "INSERT INTO messages (session_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+                        (session_id, "assistant", accumulated, now2)
+                    )
+                    # 同步更新会话时间，方便列表排序/显示
+                    conn.execute(
+                        "UPDATE sessions SET updated_at = ? WHERE id = ?",
+                        (now2, session_id)
+                    )
+                    conn.commit()
+                except Exception as _e:
+                    # 记录到标准输出，避免中断流
+                    print("[warn] failed to persist assistant reply in stream finalizer:", _e)
+                finally:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+
     return Response(stream_with_context(generate()), mimetype="text/plain; charset=utf-8")
 
 
